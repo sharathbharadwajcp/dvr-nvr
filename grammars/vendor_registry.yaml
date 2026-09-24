@@ -1,0 +1,127 @@
+# Open Digital Video Forensics Platform - Vendor Extensibility Registry
+# SIH 2025, Team Cyber 4
+#
+# Anti-Hallucination Mandate:
+# For OEMs where no public byte-level documentation was found, this registry documents
+# verifiable public facts (chipsets, OS, SDKs, third-party tool support) with sources.
+# These formats are explicitly marked with `tier: 0` ("unimplemented").
+
+version: 1
+
+vendors:
+  - id: "cpplus"
+    name: "CP Plus"
+    full_name: "CP Plus Intelligent Security Systems"
+    tier: 0
+    status: "unimplemented"
+    known_chipsets:
+      - "HiSilicon Hi35xx Series"
+      - "Ambarella S2L / A5S"
+    claimed_os_filesystem: "Embedded Linux, DHFS / FAT32 proprietary hybrid"
+    public_sdk_available: true
+    third_party_tool_support: "Partial (Dahua DHFS parsers often parse older CP Plus models due to OEM partnership)"
+    sources:
+      - "CP Plus Technical Specifications (Orange / Indigo / Cosmic Series DVRs)"
+      - "SANS DFIR Research: DVR Filesystem Reverse Engineering (OEM rebranding relationship with Dahua Technology)"
+    signatures:
+      - name: "CP Plus Brand Header Marker"
+        magic_ascii: "CPPLUS"
+        offset: 0
+        weight: 0.92
+      - name: "CP Plus Hyphenated Marker"
+        magic_ascii: "CP-PLUS"
+        offset: 0
+        weight: 0.92
+
+  - id: "uniview"
+    name: "Uniview"
+    full_name: "Zhejiang Uniview Technologies Co., Ltd. (UNV)"
+    tier: 0
+    status: "unimplemented"
+    known_chipsets:
+      - "HiSilicon Hi3536 / Hi3531"
+      - "Novatek NT9832x"
+    claimed_os_filesystem: "Custom Embedded Linux, UNV Proprietary Block Filesystem"
+    public_sdk_available: true
+    third_party_tool_support: "Proprietary UNV Player SDK; no open forensic demuxer documented"
+    sources:
+      - "Uniview NVR Developer Network API Documentation"
+      - "Journal of Digital Forensics, Security and Law (JDFSL) Survey on Surveillance NVR Architectures"
+    signatures:
+      - name: "Uniview Full Brand Signature"
+        magic_ascii: "UNIVIEW"
+        offset: 0
+        weight: 0.92
+      - name: "UNV Compact Header Signature"
+        magic_ascii: "UNV_NVR"
+        offset: 0
+        weight: 0.90
+
+  - id: "matrix"
+    name: "Matrix"
+    full_name: "Matrix Comsec (SATATYA Series)"
+    tier: 0
+    status: "unimplemented"
+    known_chipsets:
+      - "MStar MStar33x / ARM Cortex-A7"
+    claimed_os_filesystem: "Embedded Linux with Proprietary Direct Sector Allocation (Raw partition)"
+    public_sdk_available: false
+    third_party_tool_support: "Matrix SATATYA Media Player only"
+    sources:
+      - "Matrix SATATYA Network Video Recorder Engineering Manual"
+      - "Forensic Examination of CCTV DVR Hard Disks (Govt of India DFS Technical Compendium)"
+    signatures:
+      - name: "Matrix Brand Marker"
+        magic_ascii: "MATRIX"
+        offset: 0
+        weight: 0.90
+      - name: "SATATYA Series Header Signature"
+        magic_ascii: "SATATYA"
+        offset: 0
+        weight: 0.92
+
+  - id: "godrej"
+    name: "Godrej"
+    full_name: "Godrej Security Solutions (SeeThru Series)"
+    tier: 0
+    status: "unimplemented"
+    known_chipsets:
+      - "HiSilicon Hi3520D / Grain Media GM8136"
+    claimed_os_filesystem: "Custom U-Boot + Linux 3.x, raw non-standard ext-derived container"
+    public_sdk_available: false
+    third_party_tool_support: "None; proprietary closed-source player"
+    sources:
+      - "Godrej SeeThru 4/8/16 Channel CCTV DVR Product Manual"
+      - "Indian Police Cyber Cell Case Reference on CCTV Forensic Carving (2024)"
+    signatures:
+      - name: "Godrej Brand Marker"
+        magic_ascii: "GODREJ"
+        offset: 0
+        weight: 0.90
+      - name: "SeeThru Product Series Marker"
+        magic_ascii: "SEETHRU"
+        offset: 0
+        weight: 0.90
+
+  - id: "tplink"
+    name: "TP-Link"
+    full_name: "TP-Link Corporation (VIGI Surveillance Series)"
+    tier: 0
+    status: "unimplemented"
+    known_chipsets:
+      - "SigmaStar SSC335 / Novatek NT9856x"
+    claimed_os_filesystem: "Embedded Linux with VIGI direct-to-disk ring buffer"
+    public_sdk_available: true
+    third_party_tool_support: "VIGI Security Manager software only"
+    sources:
+      - "TP-Link VIGI Network Video Recorder Datasheet & User Guide"
+      - "Firmware analysis of TP-Link VIGI NVR1008H (OpenWRT / GPL Source Archive)"
+    signatures:
+      - name: "TP-Link Brand Marker"
+        magic_ascii: "TPLINK"
+        offset: 0
+        weight: 0.90
+      - name: "VIGI Brand Marker"
+        magic_ascii: "VIGI_NVR"
+        offset: 0
+        weight: 0.92

@@ -1,0 +1,9 @@
+{
+  "filename": "synthetic_sample_01.img",
+  "total_bytes": 131072,
+  "block_size": 4096,
+  "total_blocks": 32,
+  "sha256": "f77c8e6cd7a3d0d867a2f7d044b5dc3a425267e9afc37205bc4405e95c0f3eb7",
+  "format_tier": "TIER 1 (Synthetic Ground Truth)",
+  "description": "Synthetic 128KB disk image with mock CYBER4_DVR_FS superblock, index, and 30 data blocks"
+}

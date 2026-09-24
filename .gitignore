@@ -1,0 +1,24 @@
+# Rust build artifacts
+target/
+engine/target/
+**/target/
+**/*.rs.bk
+
+# Ephemeral SQLite databases & WAL logs generated at runtime
+*.db
+*.db-wal
+*.db-shm
+**/case.db
+**/case.db-wal
+**/case.db-shm
+
+# Ephemeral case outputs from local GUI & sanity runs
+samples/gui_case/
+samples/sanity_case/
+samples/case_output/
+samples/synthetic_disk_acquired/
+
+# OS specific files
+.DS_Store
+Thumbs.db
+desktop.ini

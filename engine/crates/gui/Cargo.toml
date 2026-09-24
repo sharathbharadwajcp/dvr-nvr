@@ -1,0 +1,23 @@
+[package]
+name = "gui"
+version = "0.1.0"
+edition = "2021"
+description = "Desktop Forensic GUI Application wrapping all crates directly for dvrft"
+
+[dependencies]
+acquisition = { path = "../acquisition" }
+parser = { path = "../parser" }
+identify = { path = "../identify" }
+recovery = { path = "../recovery" }
+correlation = { path = "../correlation" }
+analytics = { path = "../analytics" }
+reporting = { path = "../reporting" }
+
+tiny_http = "0.12"
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+anyhow = "1.0"
+clap.workspace = true
+
+[dev-dependencies]
+tempfile = "3.10"

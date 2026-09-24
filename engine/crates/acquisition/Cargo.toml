@@ -1,0 +1,22 @@
+[package]
+name = "acquisition"
+version = "0.1.0"
+edition.workspace = true
+authors.workspace = true
+license.workspace = true
+description = "Strict read-only forensic acquisition and multithreaded hashing engine for DVR/NVR storage"
+
+[dependencies]
+blake3.workspace = true
+sha2.workspace = true
+md-5.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+chrono.workspace = true
+rayon.workspace = true
+thiserror.workspace = true
+crossbeam-channel.workspace = true
+hex.workspace = true
+
+[dev-dependencies]
+tempfile.workspace = true

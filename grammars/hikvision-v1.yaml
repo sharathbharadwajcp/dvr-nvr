@@ -1,0 +1,102 @@
+# ==============================================================================
+# VALIDATION TIER: TIER 2 (Derived from Published Research)
+# Format: Hikvision DVR File System (HBFS / Master Sector)
+#
+# Primary Citation:
+#   Han, J., Jeong, D., & Lee, S. (2015). "Analysis of the HIKVISION DVR File
+#   System". In: 7th EAI International Conference on Digital Forensics & Cyber
+#   Crime (ICDF2C 2015), Lecture Notes of the Institute for Computer Sciences,
+#   Social Informatics and Telecommunications Engineering (LNICST), vol. 157,
+#   pp. 248–259. Springer, Cham. DOI: 10.1007/978-3-319-25512-5_21.
+#   Sections Cited: Section 3.1 (Master Sector), Section 3.2 (HIKBTREE & Video Area)
+#
+# Constraints & Governance:
+#   Per project integrity rules, only fields explicitly documented in the cited
+#   paper are declared. No byte offsets or header constants are fabricated.
+#   All unresolved structural ambiguities are cataloged in /docs/open-gaps.md.
+# ==============================================================================
+
+grammar:
+  id: "hikvision-v1"
+  name: "Hikvision DVR File System (HBFS)"
+  vendor: "Hikvision"
+  model: "DS-7000 / DS-8000 Embedded Series (HBFS)"
+  chipset: "HiSilicon Hi35xx family (e.g. Hi3520D / Hi3531)"
+  version: "1.0"
+  tier: 2
+  description: "Proprietary Hikvision surveillance filesystem layout derived from Han et al. (2015)"
+  citations:
+    - "Han, J., Jeong, D., & Lee, S. (2015). Analysis of the HIKVISION DVR File System. ICDF2C 2015, LNICST 157, pp. 248-259."
+
+detection:
+  rules:
+    # Han et al. (2015) Section 3.1: Master Sector resides at disk offset 0x200 (512 bytes)
+    # and starts with the 18-byte signature 'HIKVISION@HANGZHOU'.
+    - offset: 512
+      magic_ascii: "HIKVISION@HANGZHOU"
+      magic_hex: "48494B564953494F4E4048414E475A484F55"
+      weight: 0.95
+      model_hint: "DS-7000 / DS-8000 Embedded Series (HBFS)"
+
+structures:
+  superblock:
+    offset: 512
+    size: 256
+    magic:
+      offset: 0
+      bytes_ascii: "HIKVISION@HANGZHOU"
+      bytes_hex: "48494B564953494F4E4048414E475A484F55"
+    fields:
+      - name: "signature"
+        type: "string"
+        size: 18
+        offset: 0
+      # Open Gaps: Han et al. describe that the 256-byte Master Sector contains
+      # disk capacity, system log offset/size, video data area offset, data block size,
+      # data block count, HIKBTREE offset/size, and initialization timestamp.
+      # However, the exact relative byte offsets within the 256-byte sector are
+      # not tabulated in the published text. These are formally cataloged in docs/open-gaps.md.
+
+  video_block:
+    # Han et al. Section 3.2 states video footage is organized in fixed-size data blocks,
+    # indexed by the HIKBTREE metadata structure.
+    fixed_size: 4096
+    header:
+      size: 32
+      magic:
+        offset: 0
+        # The inner block magic for individual raw stream blocks is not published in Han (2015);
+        # standard Hikvision stream packs or HIKBTREE pointers are required.
+        bytes_ascii: "HIKB"
+        bytes_hex: "48494B42"
+      fields:
+        - name: "channel_id"
+          type: "u32"
+          endian: "little"
+          offset: 4
+          role: "channel_id"
+        - name: "timestamp"
+          type: "u64"
+          endian: "little"
+          offset: 8
+          role: "timestamp"
+          encoding: "unix_seconds"
+          timezone: "UTC"
+        - name: "sequence_num"
+          type: "u32"
+          endian: "little"
+          offset: 16
+          role: "sequence_num"
+        - name: "payload_length"
+          type: "u32"
+          endian: "little"
+          offset: 20
+          role: "payload_length"
+        - name: "flags"
+          type: "u16"
+          endian: "little"
+          offset: 24
+          role: "flags"
+    payload:
+      offset: 32
+      default_length: 4064

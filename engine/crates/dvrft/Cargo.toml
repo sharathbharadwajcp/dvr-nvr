@@ -1,0 +1,19 @@
+[package]
+name = "dvrft"
+version = "0.1.0"
+edition.workspace = true
+authors.workspace = true
+license.workspace = true
+description = "Digital Video Forensics Toolkit CLI"
+
+[dependencies]
+acquisition = { path = "../acquisition" }
+parser = { path = "../parser" }
+identify = { path = "../identify" }
+recovery = { path = "../recovery" }
+correlation = { path = "../correlation" }
+analytics = { path = "../analytics" }
+reporting = { path = "../reporting" }
+clap.workspace = true
+anyhow.workspace = true
+serde_json.workspace = true

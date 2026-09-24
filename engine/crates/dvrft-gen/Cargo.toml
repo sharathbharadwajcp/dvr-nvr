@@ -1,0 +1,16 @@
+[package]
+name = "dvrft-gen"
+version = "0.1.0"
+edition.workspace = true
+authors.workspace = true
+license.workspace = true
+description = "Synthetic vendor-like DVR disk image and ground-truth generator"
+
+[dependencies]
+clap.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+sha2.workspace = true
+blake3.workspace = true
+hex.workspace = true
+anyhow.workspace = true

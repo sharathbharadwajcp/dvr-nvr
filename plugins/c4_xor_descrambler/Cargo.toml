@@ -1,0 +1,14 @@
+[package]
+name = "c4_xor_descrambler"
+version = "0.1.0"
+edition = "2021"
+authors = ["Team Cyber 4"]
+license = "Apache-2.0"
+description = "Reference WebAssembly XOR descrambler plugin for C4FS synthetic DVR format"
+
+[workspace]
+
+[lib]
+crate-type = ["cdylib"]
+
+[dependencies]

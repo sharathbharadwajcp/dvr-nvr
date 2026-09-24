@@ -1,0 +1,86 @@
+# ==============================================================================
+# VALIDATION TIER: TIER 2 (Derived from Published Research)
+# Format: Dahua CCTV / DHAV Frame Container (DHFS)
+#
+# Primary Citations:
+#   1. Dragonas, E., Lambrinoudakis, C., & Kotsis, M. (2024). "Forensic analysis
+#      of Dahua CCTV systems and artifact interpretation". Journal of Forensic
+#      Sciences / MDPI.
+#   2. FFmpeg Project (2019–2024). "libavformat/dhav.c: Dahua DHAV Demuxer".
+#
+# Constraints & Governance:
+#   Derived strictly from published research and open source forensic specifications.
+#   Missing disk-level partition table offsets are documented in /docs/open-gaps.md.
+# ==============================================================================
+
+grammar:
+  id: "dahua-v1"
+  name: "Dahua Surveillance Video Format (DHAV/DHFS)"
+  vendor: "Dahua"
+  model: "DH-DVR / DH-NVR Series (DHFS / DHAV)"
+  chipset: "HiSilicon Hi35xx / Ambarella S2L"
+  version: "1.0"
+  tier: 2
+  description: "Dahua DHAV frame container format derived from Dragonas et al. (2024) and FFmpeg dhav.c"
+  citations:
+    - "Dragonas, E. et al. (2024). Forensic analysis of Dahua CCTV systems. JFS."
+    - "FFmpeg libavformat/dhav.c reference implementation."
+
+detection:
+  rules:
+    # DHAV frame container begins with 4-byte ASCII signature 'DHAV' (0x44 0x48 0x41 0x56)
+    - offset: 0
+      magic_ascii: "DHAV"
+      magic_hex: "44484156"
+      weight: 0.90
+      model_hint: "DH-DVR / DH-NVR Series (DHFS / DHAV)"
+
+structures:
+  video_block:
+    fixed_size: 4096
+    header:
+      size: 24
+      magic:
+        offset: 0
+        bytes_ascii: "DHAV"
+        bytes_hex: "44484156"
+      fields:
+        - name: "frame_type"
+          type: "u16"
+          endian: "little"
+          offset: 4
+          role: "flags"
+          flag_masks:
+            video: 0xFD00
+            audio: 0xF000
+            keyframe: 0xFC00
+        - name: "channel_id"
+          type: "u16"
+          endian: "little"
+          offset: 6
+          role: "channel_id"
+        - name: "frame_number"
+          type: "u32"
+          endian: "little"
+          offset: 8
+          role: "sequence_num"
+        - name: "payload_length"
+          type: "u32"
+          endian: "little"
+          offset: 12
+          role: "payload_length"
+        - name: "date_packed"
+          type: "u32"
+          endian: "little"
+          offset: 16
+          role: "timestamp"
+          encoding: "dahua_packed"
+          timezone: "+08:00"
+        - name: "timestamp_ticks"
+          type: "u32"
+          endian: "little"
+          offset: 20
+    payload:
+      offset: 24
+      length_field: "payload_length"
+      default_length: 4072

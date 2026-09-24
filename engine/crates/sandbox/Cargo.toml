@@ -1,0 +1,16 @@
+[package]
+name = "sandbox"
+version = "0.1.0"
+edition.workspace = true
+authors.workspace = true
+license.workspace = true
+description = "WebAssembly sandboxing host for vendor-specific DVR descrambler plugins"
+
+[dependencies]
+wasmtime.workspace = true
+thiserror.workspace = true
+anyhow.workspace = true
+
+[dev-dependencies]
+tempfile.workspace = true
+wat.workspace = true

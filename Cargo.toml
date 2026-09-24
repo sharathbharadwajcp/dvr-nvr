@@ -1,0 +1,8 @@
+[workspace]
+resolver = "2"
+members = [
+    "engine/crates/acquisition",
+    "engine/crates/dvrft",
+    "engine/crates/dvrft-gen",
+    "engine/crates/parser",
+]

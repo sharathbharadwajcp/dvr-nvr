@@ -1,0 +1,141 @@
+# ==============================================================================
+# VALIDATION TIER: TIER 1 (Synthetic Ground Truth)
+# Format: Cyber4 Forensic File System (C4FS v1)
+# Derived from: docs/synthetic-format-spec.md
+# Architecture: SIH 2025 Team Cyber 4 Open Digital Video Forensics Platform
+# ==============================================================================
+
+grammar:
+  id: "synthetic-v1"
+  name: "Cyber4 Forensic File System v1 (C4FS)"
+  vendor: "Cyber4 Synthetic"
+  model: "C4FS-Generic Multi-Channel DVR"
+  chipset: "Synthetic C4-ARM64"
+  descramble_plugin: "c4_xor_descrambler"
+  version: "1.0"
+  tier: 1
+  description: "Synthetic vendor-like interleaved dual-channel DVR format with scramble & corruption test regions"
+
+detection:
+  rules:
+    - offset: 0
+      magic_ascii: "C4DVR\x00\x01\x00"
+      magic_hex: "4334445652000100"
+      weight: 0.98
+      model_hint: "C4FS-Generic Multi-Channel DVR"
+
+structures:
+  superblock:
+    offset: 0
+    size: 4096
+    magic:
+      offset: 0
+      bytes_ascii: "C4DVR\x00\x01\x00"
+      bytes_hex: "4334445652000100"
+    fields:
+      - name: "version"
+        type: "u32"
+        endian: "little"
+        offset: 8
+      - name: "block_size"
+        type: "u32"
+        endian: "little"
+        offset: 12
+      - name: "total_blocks"
+        type: "u32"
+        endian: "little"
+        offset: 16
+      - name: "partition_table_offset"
+        type: "u64"
+        endian: "little"
+        offset: 20
+      - name: "partition_count"
+        type: "u32"
+        endian: "little"
+        offset: 28
+      - name: "created_timestamp"
+        type: "u64"
+        endian: "little"
+        offset: 32
+
+  partition_table:
+    offset: 4096
+    size: 4096
+    magic:
+      offset: 0
+      bytes_ascii: "C4PT"
+      bytes_hex: "43345054"
+    entries:
+      offset: 16
+      entry_size: 32
+      max_entries: 2
+      fields:
+        - name: "channel_id"
+          type: "u32"
+          endian: "little"
+          offset: 0
+        - name: "channel_name"
+          type: "string"
+          size: 8
+          offset: 4
+        - name: "start_block"
+          type: "u32"
+          endian: "little"
+          offset: 12
+        - name: "block_count"
+          type: "u32"
+          endian: "little"
+          offset: 16
+        - name: "flags"
+          type: "u32"
+          endian: "little"
+          offset: 20
+
+  video_block:
+    fixed_size: 4096
+    header:
+      size: 32
+      magic:
+        offset: 0
+        bytes_ascii: "C4VF"
+        bytes_hex: "43345646"
+      fields:
+        - name: "channel_id"
+          type: "u32"
+          endian: "little"
+          offset: 4
+          role: "channel_id"
+        - name: "timestamp"
+          type: "u64"
+          endian: "little"
+          offset: 8
+          role: "timestamp"
+          encoding: "unix_seconds"
+          timezone: "UTC"
+        - name: "sequence_num"
+          type: "u32"
+          endian: "little"
+          offset: 16
+          role: "sequence_num"
+        - name: "payload_length"
+          type: "u32"
+          endian: "little"
+          offset: 20
+          role: "payload_length"
+        - name: "flags"
+          type: "u16"
+          endian: "little"
+          offset: 24
+          role: "flags"
+          flag_masks:
+            keyframe: 0x0001
+            scrambled: 0x0002
+            corrupted: 0x0004
+        - name: "header_crc"
+          type: "u16"
+          endian: "little"
+          offset: 26
+    payload:
+      offset: 32
+      length_field: "payload_length"
+      default_length: 4064

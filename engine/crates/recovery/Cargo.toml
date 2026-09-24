@@ -1,0 +1,19 @@
+[package]
+name = "recovery"
+version = "0.1.0"
+edition.workspace = true
+authors.workspace = true
+license.workspace = true
+description = "Deep carving and forensic video frame recovery engine"
+
+[dependencies]
+acquisition = { path = "../acquisition" }
+blake3.workspace = true
+hex.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+thiserror.workspace = true
+anyhow.workspace = true
+
+[dev-dependencies]
+tempfile.workspace = true
