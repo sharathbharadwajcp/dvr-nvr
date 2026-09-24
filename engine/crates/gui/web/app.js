@@ -139,14 +139,14 @@ function setupIdentifyScreen() {
     }
   };
 
-  btn.addEventListener("click", () => runIdentification());
+  btn?.addEventListener("click", () => runIdentification());
 
-  document.getElementById("btn-load-cpplus-sample").addEventListener("click", async () => {
+  document.getElementById("btn-load-cpplus-sample")?.addEventListener("click", async () => {
     document.getElementById("ident-source").value = "../samples/fixtures/sample_cpplus.img";
     await runIdentification("../samples/fixtures/sample_cpplus.img");
   });
 
-  document.getElementById("btn-load-uniview-sample").addEventListener("click", async () => {
+  document.getElementById("btn-load-uniview-sample")?.addEventListener("click", async () => {
     document.getElementById("ident-source").value = "../samples/fixtures/sample_uniview.img";
     await runIdentification("../samples/fixtures/sample_uniview.img");
   });

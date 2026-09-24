@@ -150,6 +150,42 @@ fn main() -> Result<()> {
                     let image_path = image_path_raw.trim().trim_matches('"').trim_matches('\'');
                     let grammars_dir = body.get("grammars_dir").and_then(|v| v.as_str()).unwrap_or("../grammars");
 
+                    let p = Path::new(image_path);
+                    if p.is_dir() {
+                        let mut found_cctv_files = Vec::new();
+                        if let Ok(entries) = std::fs::read_dir(p) {
+                            for entry in entries.flatten() {
+                                let ep = entry.path();
+                                if ep.is_file() {
+                                    if let Some(ext) = ep.extension().and_then(|s| s.to_str()).map(|s| s.to_lowercase()) {
+                                        if matches!(ext.as_str(), "dav" | "dhav" | "mp4" | "avi" | "mkv" | "h264" | "264" | "h265" | "265" | "img" | "raw" | "dd") {
+                                            found_cctv_files.push(ep.to_string_lossy().to_string());
+                                        }
+                                    }
+                                }
+                            }
+                        }
+
+                        if let Some(first_file) = found_cctv_files.first() {
+                            if let Ok(mut ident) = identify::identify_device(first_file, grammars_dir) {
+                                ident.details.insert(0, format!("Directory detected with {} CCTV video file(s). Auto-interrogating: {}", found_cctv_files.len(), first_file));
+                                let resp_val = json!({ "success": true, "identification": ident });
+                                let response = Response::from_string(resp_val.to_string()).with_header(json_header);
+                                let _ = request.respond(response);
+                                continue;
+                            }
+                        }
+
+                        let clean_path = image_path.trim_end_matches(['\\', '/']);
+                        let resp_val = json!({
+                            "success": false,
+                            "error": format!("'{}' is a directory / drive folder, not an individual video file or disk image. Please open the pendrive in File Explorer and paste the path to an individual video file (e.g. {}\\video.dav or {}\\ch01.mp4) or a raw disk image (.img/.raw).", image_path, clean_path, clean_path)
+                        });
+                        let response = Response::from_string(resp_val.to_string()).with_header(json_header);
+                        let _ = request.respond(response);
+                        continue;
+                    }
+
                     let res = identify::identify_device(image_path, grammars_dir);
                     let resp_val = match res {
                         Ok(ident) => json!({ "success": true, "identification": ident }),

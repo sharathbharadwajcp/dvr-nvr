@@ -176,9 +176,8 @@ pub fn detect_video_container_or_stream(probe_slice: &[u8], _file_len: u64) -> O
     if probe_slice.len() >= 12 && &probe_slice[4..8] == b"ftyp" {
         let brand_bytes = &probe_slice[8..12];
         let brand_str = String::from_utf8_lossy(brand_bytes).trim().to_string();
-        let probe_lower = String::from_utf8_lossy(&probe_slice[..probe_slice.len().min(1024)]).to_lowercase();
 
-        if brand_str.eq_ignore_ascii_case("hikv") || probe_lower.contains("hikvision") || probe_lower.contains("hikv") {
+        if brand_str.eq_ignore_ascii_case("hikv") || probe_slice.windows(4).any(|w| w == b"hikv" || w == b"hik4" || w == b"HIKV" || w == b"HIK4") {
             return Some(DeviceIdentification {
                 recognized: true,
                 vendor: "Hikvision".to_string(),
@@ -195,7 +194,7 @@ pub fn detect_video_container_or_stream(probe_slice: &[u8], _file_len: u64) -> O
             });
         }
 
-        if brand_str.eq_ignore_ascii_case("dhav") || probe_lower.contains("dhav") {
+        if brand_str.eq_ignore_ascii_case("dhav") || probe_slice.windows(4).any(|w| w == b"dhav" || w == b"DHAV") {
             return Some(DeviceIdentification {
                 recognized: true,
                 vendor: "Dahua".to_string(),
@@ -212,25 +211,49 @@ pub fn detect_video_container_or_stream(probe_slice: &[u8], _file_len: u64) -> O
             });
         }
 
+        if let Some((oem_vendor, oem_model, oem_chipset, oem_grammar)) = detect_container_oem(probe_slice) {
+            return Some(DeviceIdentification {
+                recognized: true,
+                vendor: oem_vendor.to_string(),
+                model: Some(oem_model.to_string()),
+                chipset: Some(oem_chipset.to_string()),
+                confidence: 0.96,
+                matched_grammar_id: Some(oem_grammar.to_string()),
+                validation_tier: Some(2),
+                matched_signature: Some(format!("ftyp ({}) + OEM ({})", brand_str, oem_vendor)),
+                details: vec![
+                    format!("Detected {} surveillance video container (Brand: {})", oem_vendor, brand_str),
+                    format!("Identified proprietary {} metadata markers embedded inside container boxes.", oem_vendor),
+                    "Payload: H.264/H.265 surveillance video stream ready for playback and frame carving.".to_string(),
+                ],
+            });
+        }
+
         return Some(DeviceIdentification {
             recognized: true,
             vendor: "CCTV Video Container (MP4 / MOV)".to_string(),
             model: Some(format!("ISO Base Media Container (Brand: {})", brand_str)),
-            chipset: Some("Standard Surveillance H.264/H.265 Encoders".to_string()),
+            chipset: Some("Universal Surveillance H.264/H.265 Encoders".to_string()),
             confidence: 0.92,
             matched_grammar_id: Some("cctv-mp4".to_string()),
             validation_tier: Some(3),
             matched_signature: Some(format!("ftyp ({})", brand_str)),
             details: vec![
                 format!("Identified valid ISO Base Media / QuickTime container (Brand: {})", brand_str),
-                "Compatible with universal CCTV demuxers and forensic NAL bitstream analyzers".to_string(),
+                "Note: The CCTV DVR exported this recording in standard ISO MP4 format without vendor-specific metadata tags.".to_string(),
+                "Proprietary file systems (HBFS for Hikvision, DHFS for CP PLUS/Dahua) exist on the raw hard disk, not inside exported MP4 video files.".to_string(),
+                "Compatible with universal CCTV demuxers and forensic NAL bitstream analyzers.".to_string(),
+                "To extract frames, verify timestamps, or play the video, proceed to Screen 4 (Carving) or Screen 5 (Playback).".to_string(),
             ],
         });
     }
 
     // 2. Dahua DAV / DHAV Stream
-    if probe_slice.len() >= 4 && (&probe_slice[0..4] == b"DHAV" || &probe_slice[0..4] == b"DAHV") {
-        let sig = String::from_utf8_lossy(&probe_slice[0..4]).to_string();
+    let dhav_pos = probe_slice[..probe_slice.len().min(4096)]
+        .windows(4)
+        .position(|w| w == b"DHAV" || w == b"DAHV");
+    if let Some(pos) = dhav_pos {
+        let sig = String::from_utf8_lossy(&probe_slice[pos..pos + 4]).to_string();
         return Some(DeviceIdentification {
             recognized: true,
             vendor: "Dahua".to_string(),
@@ -239,9 +262,9 @@ pub fn detect_video_container_or_stream(probe_slice: &[u8], _file_len: u64) -> O
             confidence: 0.90,
             matched_grammar_id: Some("dahua-v1".to_string()),
             validation_tier: Some(3),
-            matched_signature: Some(sig),
+            matched_signature: Some(if pos == 0 { sig } else { format!("{} (offset 0x{:X})", sig, pos) }),
             details: vec![
-                "Identified Dahua DHAV proprietary frame container signature at byte 0".to_string(),
+                format!("Identified Dahua DHAV proprietary frame container signature at byte {}", pos),
                 "Compatible with Dahua DHAV demuxer (Tier 2)".to_string(),
             ],
         });
@@ -283,22 +306,26 @@ pub fn detect_video_container_or_stream(probe_slice: &[u8], _file_len: u64) -> O
         });
     }
 
-    // 5. Raw H.264 / AVC Elementary Stream
-    if probe_slice.len() >= 5 {
-        let (nal_byte, sig_offset) = if probe_slice.starts_with(&[0x00, 0x00, 0x00, 0x01]) {
-            (Some(probe_slice[4]), 4)
-        } else if probe_slice.starts_with(&[0x00, 0x00, 0x01]) {
-            (Some(probe_slice[3]), 3)
-        } else {
-            (None, 0)
-        };
+    // 5. Raw H.264 / AVC or H.265 / HEVC Elementary Stream
+    let start_pos = probe_slice[..probe_slice.len().min(4096)]
+        .windows(4)
+        .position(|w| w == &[0x00, 0x00, 0x00, 0x01])
+        .map(|p| (p, 4))
+        .or_else(|| {
+            probe_slice[..probe_slice.len().min(4096)]
+                .windows(3)
+                .position(|w| w == &[0x00, 0x00, 0x01])
+                .map(|p| (p, 3))
+        });
 
-        if let Some(nb) = nal_byte {
+    if let Some((pos, code_len)) = start_pos {
+        if probe_slice.len() > pos + code_len {
+            let nb = probe_slice[pos + code_len];
             if (nb & 0x80) == 0 {
                 let nal_type = nb & 0x1F;
                 let hevc_type = (nb >> 1) & 0x3F;
 
-                if (hevc_type == 32 || hevc_type == 33 || hevc_type == 34) && probe_slice.len() > sig_offset + 1 {
+                if (hevc_type == 32 || hevc_type == 33 || hevc_type == 34) && probe_slice.len() > pos + code_len + 1 {
                     return Some(DeviceIdentification {
                         recognized: true,
                         vendor: "Surveillance Video Stream (Raw H.265 / HEVC)".to_string(),
@@ -309,7 +336,7 @@ pub fn detect_video_container_or_stream(probe_slice: &[u8], _file_len: u64) -> O
                         validation_tier: Some(3),
                         matched_signature: Some(format!("00 00 00 01 (HEVC Type {})", hevc_type)),
                         details: vec![
-                            format!("Identified raw H.265 / HEVC Annex B NAL unit header (Type: {})", hevc_type),
+                            format!("Identified raw H.265 / HEVC Annex B NAL unit header (Type: {}) at offset 0x{:X}", hevc_type, pos),
                             "Direct elementary bitstream suitable for H.265 carving and frame parsing".to_string(),
                         ],
                     });
@@ -335,7 +362,7 @@ pub fn detect_video_container_or_stream(probe_slice: &[u8], _file_len: u64) -> O
                         validation_tier: Some(3),
                         matched_signature: Some(format!("00 00 00 01 0x{:02X} ({})", nb, type_name)),
                         details: vec![
-                            format!("Identified raw H.264 Annex B stream starting with {}", type_name),
+                            format!("Identified raw H.264 Annex B stream starting with {} at offset 0x{:X}", type_name, pos),
                             "Direct elementary bitstream suitable for Screen 3 carving and Screen 4 analytics".to_string(),
                         ],
                     });
@@ -405,7 +432,131 @@ pub fn detect_video_container_or_stream(probe_slice: &[u8], _file_len: u64) -> O
         }
     }
 
+    // 8. Still Graphic Images (PNG, JPEG, BMP) - CCTV Snapshot / Exported Picture
+    if probe_slice.len() >= 8 && probe_slice.starts_with(&[0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A]) {
+        let (vendor, model, oem_note) = if let Some((oem, model_desc)) = detect_image_metadata_oem(probe_slice) {
+            (
+                format!("CCTV Snapshot / Export ({})", oem),
+                Some(model_desc),
+                format!("OEM Identified from embedded metadata: {}", oem),
+            )
+        } else {
+            (
+                "Still Graphic Image / CCTV Snapshot (PNG)".to_string(),
+                Some("Generic PNG Image (No OEM Tags in Metadata)".to_string()),
+                "No OEM brand metadata (Hikvision, CP PLUS, Dahua, etc.) embedded in PNG chunks.".to_string(),
+            )
+        };
+
+        return Some(DeviceIdentification {
+            recognized: true,
+            vendor,
+            model,
+            chipset: Some("Single-Frame Graphic Asset".to_string()),
+            confidence: 0.99,
+            matched_grammar_id: Some("image-png".to_string()),
+            validation_tier: Some(3),
+            matched_signature: Some("89 50 4E 47 0D 0A 1A 0A (.PNG)".to_string()),
+            details: vec![
+                "Identified PNG still image file (CCTV snapshot / picture).".to_string(),
+                oem_note,
+                "A PNG file is an open W3C bitmap image format (pixel colors), NOT a DVR hard drive filesystem.".to_string(),
+                "Proprietary filesystems (e.g. DHFS for CP PLUS/Dahua, HIKVISION for Hikvision) exist on the raw hard disk, not inside exported PNG snapshots.".to_string(),
+                "To identify the DVR equipment conclusively, acquire the physical HDD (.img/.raw) or native exported video clip (.dav/.mp4/.h264).".to_string(),
+            ],
+        });
+    }
+
+    if probe_slice.len() >= 3 && probe_slice.starts_with(&[0xFF, 0xD8, 0xFF]) {
+        let (vendor, model, oem_note) = if let Some((oem, model_desc)) = detect_image_metadata_oem(probe_slice) {
+            (
+                format!("CCTV Snapshot / Export ({})", oem),
+                Some(model_desc),
+                format!("OEM Identified from embedded EXIF metadata: {}", oem),
+            )
+        } else {
+            (
+                "Still Graphic Image / CCTV Snapshot (JPEG)".to_string(),
+                Some("Generic JPEG Image (No OEM Tags in Metadata)".to_string()),
+                "No OEM brand metadata (Hikvision, CP PLUS, Dahua, etc.) embedded in EXIF tags.".to_string(),
+            )
+        };
+
+        return Some(DeviceIdentification {
+            recognized: true,
+            vendor,
+            model,
+            chipset: Some("Single-Frame Graphic Asset".to_string()),
+            confidence: 0.99,
+            matched_grammar_id: Some("image-jpeg".to_string()),
+            validation_tier: Some(3),
+            matched_signature: Some("FF D8 FF (JPEG SOI)".to_string()),
+            details: vec![
+                "Identified JPEG still photo (CCTV snapshot).".to_string(),
+                oem_note,
+                "A JPEG photo contains compressed pixel data, NOT a DVR hard drive filesystem.".to_string(),
+                "To identify the DVR equipment conclusively, acquire the physical HDD (.img/.raw) or native exported video clip (.dav/.mp4/.h264).".to_string(),
+            ],
+        });
+    }
+
     None
+}
+
+/// Scans image header bytes (first 64KB) for ASCII metadata markers of major CCTV OEMs.
+fn detect_image_metadata_oem(data: &[u8]) -> Option<(String, String)> {
+    let lower: Vec<u8> = data.iter().map(|b| b.to_ascii_lowercase()).collect();
+    let s = String::from_utf8_lossy(&lower);
+
+    if s.contains("hikvision") || s.contains("hik_") || s.contains("ds-7") || s.contains("ds-8") {
+        Some(("Hikvision".to_string(), "Hikvision CCTV Snapshot / Export".to_string()))
+    } else if s.contains("cp plus") || s.contains("cpplus") || s.contains("cp-uvr") || s.contains("cp-e") {
+        Some(("CP PLUS".to_string(), "CP PLUS CCTV Snapshot / Export".to_string()))
+    } else if s.contains("dahua") || s.contains("dhav") || s.contains("dh-") {
+        Some(("Dahua Technology".to_string(), "Dahua CCTV Snapshot / Export".to_string()))
+    } else if s.contains("uniview") || s.contains("unv") {
+        Some(("Uniview (UNV)".to_string(), "Uniview CCTV Snapshot / Export".to_string()))
+    } else if s.contains("tiandy") {
+        Some(("Tiandy Technologies".to_string(), "Tiandy CCTV Snapshot / Export".to_string()))
+    } else if s.contains("hanwha") || s.contains("samsung techwin") || s.contains("wiserec") {
+        Some(("Hanwha Techwin (Samsung)".to_string(), "Hanwha CCTV Snapshot / Export".to_string()))
+    } else if s.contains("axis") {
+        Some(("Axis Communications".to_string(), "Axis Network Camera Snapshot".to_string()))
+    } else if s.contains("bosch") {
+        Some(("Bosch Security Systems".to_string(), "Bosch CCTV Snapshot".to_string()))
+    } else if s.contains("xiongmai") || s.contains("xm_") {
+        Some(("Xiongmai (XM)".to_string(), "Xiongmai CCTV Snapshot".to_string()))
+    } else {
+        None
+    }
+}
+
+/// Scans container header bytes (first 64KB) for ASCII metadata markers of major CCTV OEMs in video containers (MP4, MKV, AVI).
+fn detect_container_oem(probe_slice: &[u8]) -> Option<(&'static str, &'static str, &'static str, &'static str)> {
+    let lower: Vec<u8> = probe_slice.iter().map(|b| b.to_ascii_lowercase()).collect();
+    let s = String::from_utf8_lossy(&lower);
+
+    if s.contains("hikvision") || s.contains("hik_") || s.contains("hik4") || s.contains("ds-7") || s.contains("ds-8") || s.contains("ivms") {
+        Some(("Hikvision", "Hikvision Surveillance MP4 Export", "HiSilicon / Embedded CCTV SoC", "hikvision-mp4"))
+    } else if s.contains("cp plus") || s.contains("cpplus") || s.contains("cp-uvr") || s.contains("cp-e") || s.contains("gcmob") || s.contains("kvms") {
+        Some(("CP PLUS", "CP PLUS Surveillance MP4 Export", "HiSilicon / Custom Embedded SoC", "cctv-mp4"))
+    } else if s.contains("dahua") || s.contains("dhav") || s.contains("dh-") || s.contains("smartpss") {
+        Some(("Dahua", "Dahua Surveillance MP4 Export", "HiSilicon Hi35xx / Ambarella S2L", "dahua-mp4"))
+    } else if s.contains("uniview") || s.contains("unv") {
+        Some(("Uniview (UNV)", "Uniview Surveillance MP4 Export", "Grain Media / HiSilicon SoC", "cctv-mp4"))
+    } else if s.contains("tiandy") {
+        Some(("Tiandy", "Tiandy Surveillance MP4 Export", "Embedded Surveillance SoC", "cctv-mp4"))
+    } else if s.contains("hanwha") || s.contains("samsung") || s.contains("wiserec") {
+        Some(("Hanwha Techwin (Samsung)", "Hanwha Surveillance MP4 Export", "Wisenet SoC", "cctv-mp4"))
+    } else if s.contains("xiongmai") || s.contains("xm_") || s.contains("dvr_") {
+        Some(("Xiongmai (XM)", "Xiongmai Surveillance MP4 Export", "HiSilicon / Xiongmai SoC", "cctv-mp4"))
+    } else if s.contains("axis") {
+        Some(("Axis Communications", "Axis Surveillance MP4 Export", "ARTPEC SoC", "cctv-mp4"))
+    } else if s.contains("bosch") {
+        Some(("Bosch Security", "Bosch Surveillance MP4 Export", "Bosch Embedded Media Engine", "cctv-mp4"))
+    } else {
+        None
+    }
 }
 
 /// Identifies the device vendor, model, chipset family, and confidence score for a raw evidence image or video.

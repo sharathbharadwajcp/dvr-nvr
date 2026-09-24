@@ -249,22 +249,8 @@
           <div class="field" style="margin-bottom:16px;">
             <label for="identSrc">Evidence to interrogate (DVR disk image, raw dump, or CCTV video file: .mp4, .dav, .avi, .mkv, .h264, .img, .raw)</label>
             <div style="display:flex; gap:10px;">
-              <input id="identSrc" type="text" value="../samples/synthetic_disk.img" style="flex:1;">
+              <input id="identSrc" type="text" placeholder="Enter path to DVR disk image (.img, .raw, .dd) or CCTV video file (.mp4, .dav, .avi, .h264)" style="flex:1;">
               <button class="primary" id="identifyBtn" style="white-space:nowrap;">Run identification</button>
-            </div>
-            <div style="display:flex; gap:8px; margin-top:10px; flex-wrap:wrap; align-items:center;">
-              <span style="font-size:11px; color:var(--paper-dimmer); margin-right:4px;">Quick samples:</span>
-              <button type="button" class="secondary" style="padding:4px 8px; font-size:11px;" onclick="setIdentPath('../samples/fixtures/hikvision_header.raw')">Hikvision (Tier 2)</button>
-              <button type="button" class="secondary" style="padding:4px 8px; font-size:11px;" onclick="setIdentPath('../samples/fixtures/dahua_header.raw')">Dahua (Tier 2)</button>
-              <button type="button" class="secondary" style="padding:4px 8px; font-size:11px;" onclick="setIdentPath('../samples/fixtures/sample_cpplus.img')">CP Plus (Tier 0)</button>
-              <button type="button" class="secondary" style="padding:4px 8px; font-size:11px;" onclick="setIdentPath('../samples/fixtures/sample_uniview.img')">Uniview (Tier 0)</button>
-              <button type="button" class="secondary" style="padding:4px 8px; font-size:11px;" onclick="setIdentPath('../samples/fixtures/sample_matrix.img')">Matrix (Tier 0)</button>
-              <button type="button" class="secondary" style="padding:4px 8px; font-size:11px;" onclick="setIdentPath('../samples/fixtures/sample_godrej.img')">Godrej (Tier 0)</button>
-              <button type="button" class="secondary" style="padding:4px 8px; font-size:11px;" onclick="setIdentPath('../samples/fixtures/sample_tplink.img')">TP-Link (Tier 0)</button>
-              <button type="button" class="secondary" style="padding:4px 8px; font-size:11px;" onclick="setIdentPath('../samples/fixtures/sample_cctv.mp4')">MP4 Video (Tier 3)</button>
-              <button type="button" class="secondary" style="padding:4px 8px; font-size:11px;" onclick="setIdentPath('../samples/demo_case/evidence_disk_c4fs.raw')">C4FS Disk (Tier 1)</button>
-              <button type="button" class="secondary" style="padding:4px 8px; font-size:11px;" onclick="setIdentPath('../samples/case_ident_06/report/clips/carved_clip_0000_90144_key.h264')">CCTV Video Clip (.h264)</button>
-              <button type="button" class="secondary" style="padding:4px 8px; font-size:11px;" onclick="setIdentPath('../samples/fixtures/garbage_data.raw')">Garbage Data (0%)</button>
             </div>
           </div>
           <div class="id-result" id="idResult" style="display:none;">
@@ -327,14 +313,8 @@
           <div class="field" style="margin-bottom:12px;">
             <label for="cctvVideoPath"><b>CCTV Video File to Analyze (.mp4, .h264, .dav, .avi, .mkv)</b></label>
             <div style="display:flex; gap:10px;">
-              <input id="cctvVideoPath" type="text" value="../samples/case_ident_06/report/clips/carved_clip_0000_90144_key.h264" style="flex:1;">
+              <input id="cctvVideoPath" type="text" placeholder="Enter path to CCTV video file (.mp4, .h264, .dav, .avi, .mkv)" style="flex:1;">
               <button class="primary" id="runVideoAnalyticsBtn" style="white-space:nowrap;">Analyze CCTV Video</button>
-            </div>
-            <div style="display:flex; gap:8px; margin-top:10px; flex-wrap:wrap; align-items:center;">
-              <span style="font-size:11px; color:var(--paper-dimmer); margin-right:4px;">Sample CCTV videos:</span>
-              <button type="button" class="secondary" style="padding:4px 8px; font-size:11px;" onclick="setCctvVideoPath('../samples/case_ident_06/report/clips/carved_clip_0000_90144_key.h264')">Carved Clip 1 (.h264)</button>
-              <button type="button" class="secondary" style="padding:4px 8px; font-size:11px;" onclick="setCctvVideoPath('../samples/case_ident_06/report/clips/carved_clip_0001_94240_key.h264')">Carved Clip 2 (.h264)</button>
-              <button type="button" class="secondary" style="padding:4px 8px; font-size:11px;" onclick="setCctvVideoPath('../samples/demo_case/evidence_disk_c4fs.raw')">Raw DVR Disk Stream</button>
             </div>
           </div>
           <div id="videoAnalyticsStatus" style="display:none; font-family:'IBM Plex Mono'; font-size:11.5px; color:var(--amber); margin-top:10px;">Analyzing video stream for motion, person, and vehicle proposals...</div>
